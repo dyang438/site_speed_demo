@@ -1,4 +1,5 @@
 node_modules
+.devnotes
 .pnp
 .pnp.js
 coverage
