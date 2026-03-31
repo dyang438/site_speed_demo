@@ -14,9 +14,31 @@ const ActionRunSchema = z.object({
   logUrl: z.string().url().optional().nullable(),
 });
 
+function isAuthorized(request: Request) {
+  const expectedSecret = process.env.API_SECRET;
+
+  if (!expectedSecret) {
+    return true;
+  }
+
+  const authorizationHeader = request.headers.get("authorization");
+
+  if (!authorizationHeader?.startsWith("Bearer ")) {
+    return false;
+  }
+
+  const providedSecret = authorizationHeader.slice("Bearer ".length);
+
+  return providedSecret === expectedSecret;
+}
+
 // POST: Create a new action run
 export async function POST(request: Request) {
   try {
+    if (!isAuthorized(request)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const json = await request.json();
     const validatedData = ActionRunSchema.parse(json);
 

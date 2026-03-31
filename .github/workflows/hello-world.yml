@@ -1,9 +1,10 @@
 name: Basic Action
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main]  # Only run on main branch pushes
-  pull_request:       # Run on all PRs
+    branches: [main]
+  pull_request:
 
 jobs:
   greet:
@@ -11,15 +12,26 @@ jobs:
 
     steps:
       - name: Generate random number and send to API
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
           API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
           API_SECRET: ${{ secrets.API_SECRET }}
         run: |
-          # Generate random number between 1-100
+          set -euo pipefail
+
+          if [ -z "${API_ENDPOINT:-}" ]; then
+            echo "Missing GitHub secret: API_ENDPOINT"
+            exit 1
+          fi
+
+          if [ -z "${API_SECRET:-}" ]; then
+            echo "Missing GitHub secret: API_SECRET"
+            exit 1
+          fi
+
           RANDOM_NUMBER=$((1 + RANDOM % 100))
           echo "Generated random number: $RANDOM_NUMBER"
 
-          # Prepare JSON payload
           JSON_PAYLOAD=$(cat <<EOF
           {
             "runNumber": ${{ github.run_number }},
@@ -35,9 +47,24 @@ jobs:
           EOF
           )
 
-          # Send to API endpoint
-          curl -X POST "$API_ENDPOINT" \
+          echo "Sending payload to $API_ENDPOINT"
+
+          RESPONSE_FILE=$(mktemp)
+          HTTP_STATUS=$(curl -sS \
+            -o "$RESPONSE_FILE" \
+            -w "%{http_code}" \
+            -X POST "$API_ENDPOINT" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $API_SECRET" \
-            -d "$JSON_PAYLOAD" \
-            --fail-with-body || echo "Failed to send data to API"
+            -d "$JSON_PAYLOAD")
+
+          RESPONSE_BODY=$(<"$RESPONSE_FILE")
+          rm "$RESPONSE_FILE"
+
+          echo "API status: $HTTP_STATUS"
+          echo "API response: $RESPONSE_BODY"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "GitHub Action failed to write run data to the API"
+            exit 1
+          fi
