@@ -23,6 +23,8 @@ import {
   chat,
   type DBMessage,
   document,
+  type GitHubActionRun,
+  githubActionRun,
   message,
   type Suggestion,
   stream,
@@ -627,6 +629,87 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatbotError(
       "bad_request:database",
       "Failed to get stream ids by chat id"
+    );
+  }
+}
+
+// GitHub Action Run Queries
+
+export async function createGitHubActionRun({
+  runNumber,
+  runId,
+  randomNumber,
+  workflow,
+  status,
+  branch,
+  commit,
+  actor,
+  logUrl,
+}: {
+  runNumber: number;
+  runId: string;
+  randomNumber: number;
+  workflow: string;
+  status: string;
+  branch?: string | null;
+  commit?: string | null;
+  actor?: string | null;
+  logUrl?: string | null;
+}): Promise<GitHubActionRun> {
+  try {
+    const [actionRun] = await db
+      .insert(githubActionRun)
+      .values({
+        runNumber,
+        runId,
+        randomNumber,
+        workflow,
+        status,
+        branch: branch ?? null,
+        commit: commit ?? null,
+        actor: actor ?? null,
+        logUrl: logUrl ?? null,
+      })
+      .returning();
+
+    return actionRun;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to create GitHub action run"
+    );
+  }
+}
+
+export async function getRecentActionRuns(
+  limit: number = 50
+): Promise<GitHubActionRun[]> {
+  try {
+    return await db
+      .select()
+      .from(githubActionRun)
+      .orderBy(desc(githubActionRun.createdAt))
+      .limit(limit);
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get recent action runs"
+    );
+  }
+}
+
+export async function getActionRunById(id: string): Promise<GitHubActionRun | null> {
+  try {
+    const [actionRun] = await db
+      .select()
+      .from(githubActionRun)
+      .where(eq(githubActionRun.id, id));
+
+    return actionRun ?? null;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get action run by id"
     );
   }
 }

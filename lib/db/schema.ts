@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   pgTable,
   primaryKey,
@@ -134,3 +135,19 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const githubActionRun = pgTable("github_action_runs", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  runNumber: integer("run_number").notNull(),
+  runId: varchar("run_id", { length: 255 }).notNull(),
+  randomNumber: integer("random_number").notNull(),
+  workflow: varchar("workflow", { length: 255 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull(),
+  branch: varchar("branch", { length: 255 }),
+  commit: varchar("commit", { length: 255 }),
+  actor: varchar("actor", { length: 255 }),
+  logUrl: text("log_url"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type GitHubActionRun = InferSelectModel<typeof githubActionRun>;

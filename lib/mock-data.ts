@@ -1,10 +1,25 @@
 export type TestRunStatus = "passed" | "warning" | "failed";
+export type ActionRunStatus = "success" | "failure" | "cancelled";
 
 export interface LighthouseScores {
   performance: number;
   accessibility: number;
   bestPractices: number;
   seo: number;
+}
+
+export interface GitHubActionRun {
+  id: string;
+  runNumber: number;
+  runId: string;
+  randomNumber: number;
+  workflow: string;
+  status: ActionRunStatus;
+  branch: string | null;
+  commit: string | null;
+  actor: string | null;
+  logUrl: string | null;
+  createdAt: string;
 }
 
 export interface TestRun {
@@ -100,5 +115,112 @@ export const mockTestRuns: TestRun[] = [
     },
     status: "failed",
     url: "https://example.com",
+  },
+];
+
+export const mockGitHubActionRuns: GitHubActionRun[] = [
+  {
+    id: "gh-1",
+    runNumber: 42,
+    runId: "12345678",
+    randomNumber: 87,
+    workflow: "Hello World",
+    status: "success",
+    branch: "main",
+    commit: "a1b2c3d",
+    actor: "johndoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345678",
+    createdAt: "2026-03-31T14:30:00Z",
+  },
+  {
+    id: "gh-2",
+    runNumber: 41,
+    runId: "12345677",
+    randomNumber: 23,
+    workflow: "Hello World",
+    status: "success",
+    branch: "main",
+    commit: "b2c3d4e",
+    actor: "janedoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345677",
+    createdAt: "2026-03-31T12:15:00Z",
+  },
+  {
+    id: "gh-3",
+    runNumber: 40,
+    runId: "12345676",
+    randomNumber: 56,
+    workflow: "Hello World",
+    status: "success",
+    branch: "feat/new-feature",
+    commit: "c3d4e5f",
+    actor: "johndoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345676",
+    createdAt: "2026-03-31T10:00:00Z",
+  },
+  {
+    id: "gh-4",
+    runNumber: 39,
+    runId: "12345675",
+    randomNumber: 94,
+    workflow: "Hello World",
+    status: "success",
+    branch: "main",
+    commit: "d4e5f6g",
+    actor: "janedoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345675",
+    createdAt: "2026-03-30T16:45:00Z",
+  },
+  {
+    id: "gh-5",
+    runNumber: 38,
+    runId: "12345674",
+    randomNumber: 12,
+    workflow: "Hello World",
+    status: "failure",
+    branch: "fix/bug",
+    commit: "e5f6g7h",
+    actor: "johndoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345674",
+    createdAt: "2026-03-30T14:20:00Z",
+  },
+  {
+    id: "gh-6",
+    runNumber: 37,
+    runId: "12345673",
+    randomNumber: 78,
+    workflow: "Hello World",
+    status: "success",
+    branch: "main",
+    commit: "f6g7h8i",
+    actor: "janedoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345673",
+    createdAt: "2026-03-30T11:30:00Z",
+  },
+  {
+    id: "gh-7",
+    runNumber: 36,
+    runId: "12345672",
+    randomNumber: 45,
+    workflow: "Hello World",
+    status: "success",
+    branch: "main",
+    commit: "g7h8i9j",
+    actor: "johndoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345672",
+    createdAt: "2026-03-29T15:10:00Z",
+  },
+  {
+    id: "gh-8",
+    runNumber: 35,
+    runId: "12345671",
+    randomNumber: 67,
+    workflow: "Hello World",
+    status: "cancelled",
+    branch: "test/experimental",
+    commit: "h8i9j0k",
+    actor: "janedoe",
+    logUrl: "https://github.com/owner/repo/actions/runs/12345671",
+    createdAt: "2026-03-29T09:25:00Z",
   },
 ];
