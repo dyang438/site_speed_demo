@@ -673,7 +673,8 @@ export async function createGitHubActionRun({
       .returning();
 
     return actionRun;
-  } catch (_error) {
+  } catch (error) {
+    console.error("Database error creating GitHub action run:", error);
     throw new ChatbotError(
       "bad_request:database",
       "Failed to create GitHub action run"
