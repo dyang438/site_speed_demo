@@ -1,13 +1,43 @@
-name: Hello World
+name: Basic Action
 
 on:
   push:
-  pull_request:
+    branches: [main]  # Only run on main branch pushes
+  pull_request:       # Run on all PRs
 
 jobs:
   greet:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Print hello world
-        run: echo "hello world"
+      - name: Generate random number and send to API
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+        run: |
+          # Generate random number between 1-100
+          RANDOM_NUMBER=$((1 + RANDOM % 100))
+          echo "Generated random number: $RANDOM_NUMBER"
+
+          # Prepare JSON payload
+          JSON_PAYLOAD=$(cat <<EOF
+          {
+            "runNumber": ${{ github.run_number }},
+            "runId": "${{ github.run_id }}",
+            "randomNumber": $RANDOM_NUMBER,
+            "workflow": "${{ github.workflow }}",
+            "status": "success",
+            "branch": "${{ github.ref_name }}",
+            "commit": "${{ github.sha }}",
+            "actor": "${{ github.actor }}",
+            "logUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+          )
+
+          # Send to API endpoint
+          curl -X POST "$API_ENDPOINT" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $API_SECRET" \
+            -d "$JSON_PAYLOAD" \
+            --fail-with-body || echo "Failed to send data to API"
