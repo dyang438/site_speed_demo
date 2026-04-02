@@ -1,0 +1,70 @@
+# Runs CI against your gstack fork (default: dyang438/gstack-ssd) at a fixed ref.
+# Default ref is the Codex hang-fix commit (stdout buffering / reasoning defaults).
+#
+# Run: Actions → gstack-ssd → Run workflow (optional inputs).
+
+name: gstack-ssd
+
+on:
+  workflow_dispatch:
+    inputs:
+      gstack_repository:
+        description: "owner/repo (fork on GitHub)"
+        required: false
+        default: "dyang438/gstack-ssd"
+      gstack_ref:
+        description: "Branch, tag, or full commit SHA"
+        required: false
+        default: "1b60acd5768e37509e7dc09357cd2ca7567b6135"
+      run_target:
+        description: "What to run"
+        required: false
+        default: "test"
+        type: choice
+        options:
+          - test
+          - build
+          - both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gstack-ssd-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gstack:
+    name: Bun CI (fork)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gstack-ssd
+    steps:
+      - name: Check out gstack fork
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.gstack_repository }}
+          ref: ${{ inputs.gstack_ref }}
+          path: gstack-ssd
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Resolved commit
+        run: |
+          echo "HEAD=$(git rev-parse HEAD)"
+          git log -1 --oneline
+
+      - name: Unit tests (excludes e2e / LLM evals)
+        if: inputs.run_target == 'test' || inputs.run_target == 'both'
+        run: bun run test
+
+      - name: Build (skill docs + compiled CLIs)
+        if: inputs.run_target == 'build' || inputs.run_target == 'both'
+        run: bun run build

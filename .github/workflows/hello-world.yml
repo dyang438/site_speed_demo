@@ -6,65 +6,71 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   greet:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Generate random number and send to API
+      - name: Check out repository (PR head = contributor branch)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Post GitHub Action run to API
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
           API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
           API_SECRET: ${{ secrets.API_SECRET }}
-        run: |
-          set -euo pipefail
+        run: pnpm run ci -- --run basic-action
 
-          if [ -z "${API_ENDPOINT:-}" ]; then
-            echo "Missing GitHub secret: API_ENDPOINT"
-            exit 1
-          fi
+  build:
+    runs-on: ubuntu-latest
 
-          if [ -z "${API_SECRET:-}" ]; then
-            echo "Missing GitHub secret: API_SECRET"
-            exit 1
-          fi
+    steps:
+      - name: Check out repository (PR head = full PR branch; full git history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-          RANDOM_NUMBER=$((1 + RANDOM % 100))
-          echo "Generated random number: $RANDOM_NUMBER"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
-          JSON_PAYLOAD=$(cat <<EOF
-          {
-            "runNumber": ${{ github.run_number }},
-            "runId": "${{ github.run_id }}",
-            "randomNumber": $RANDOM_NUMBER,
-            "workflow": "${{ github.workflow }}",
-            "status": "success",
-            "branch": "${{ github.ref_name }}",
-            "commit": "${{ github.sha }}",
-            "actor": "${{ github.actor }}",
-            "logUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }
-          EOF
-          )
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
 
-          echo "Sending payload to $API_ENDPOINT"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-          RESPONSE_FILE=$(mktemp)
-          HTTP_STATUS=$(curl -sS \
-            -o "$RESPONSE_FILE" \
-            -w "%{http_code}" \
-            -X POST "$API_ENDPOINT" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $API_SECRET" \
-            -d "$JSON_PAYLOAD")
+      - name: Build and record run (push, dispatch, same-repo PRs)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+        run: pnpm run ci -- --run build-action
 
-          RESPONSE_BODY=$(<"$RESPONSE_FILE")
-          rm "$RESPONSE_FILE"
-
-          echo "API status: $HTTP_STATUS"
-          echo "API response: $RESPONSE_BODY"
-
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "GitHub Action failed to write run data to the API"
-            exit 1
-          fi
+      - name: Build only (fork PRs — secrets unavailable)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        env:
+          SKIP_ACTION_RUN_POST: "true"
+        run: pnpm run ci -- --run build-action
